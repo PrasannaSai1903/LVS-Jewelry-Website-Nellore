@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>LVS Jewellery – Admin Dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;0,700;1,300;1,400&family=Montserrat:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="index.css" />
+  <style>
+    body { background: var(--black); padding-bottom: 100px; }
+    .admin-header {
+      padding: 40px; text-align: center;
+      border-bottom: 1px solid rgba(201,168,76,0.15);
+      background: var(--dark-2);
+    }
+    .admin-container { max-width: 1000px; margin: 40px auto; padding: 0 24px; }
+    .admin-card {
+      background: var(--dark-3);
+      border: 1px solid rgba(201,168,76,0.15);
+      border-radius: 8px; padding: 40px;
+      margin-bottom: 40px;
+    }
+    .admin-card h2 {
+      font-family: var(--font-serif);
+      color: var(--gold); margin-bottom: 24px;
+      font-size: 2rem;
+    }
+    .admin-form-group { margin-bottom: 20px; }
+    .admin-label {
+      display: block; font-size: 0.75rem; color: var(--text-light);
+      margin-bottom: 8px; letter-spacing: 0.1em; text-transform: uppercase;
+    }
+    .admin-input {
+      width: 100%; padding: 12px 16px;
+      background: var(--dark-2); border: 1px solid rgba(255,255,255,0.1);
+      color: var(--white); font-family: var(--font-sans);
+      border-radius: 4px; outline: none;
+    }
+    .admin-input:focus { border-color: var(--gold); }
+    .admin-grid {
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 24px;
+    }
+    .admin-product-item {
+      background: var(--dark-2);
+      border: 1px solid rgba(255,255,255,0.05);
+      border-radius: 8px; overflow: hidden;
+      padding-bottom: 16px; text-align: center;
+    }
+    .admin-product-item img {
+      width: 100%; height: 200px; object-fit: cover;
+      margin-bottom: 16px;
+    }
+    .admin-product-info h4 { font-family: var(--font-serif); font-size: 1.2rem; margin-bottom: 4px; }
+    .admin-product-info p { color: var(--gold); font-size: 0.9rem; margin-bottom: 16px; }
+    .btn-delete {
+      background: rgba(255,59,59,0.1); color: #ff3b3b;
+      border: 1px solid rgba(255,59,59,0.3);
+      padding: 6px 16px; border-radius: 4px;
+      font-size: 0.7rem; cursor: pointer; text-transform: uppercase;
+    }
+    .btn-delete:hover { background: #ff3b3b; color: white; }
+    
+    /* Toast styles for admin */
+    #adminToast {
+      position: fixed; bottom: 32px; left: 50%; transform: translateX(-50%) translateY(100px);
+      background: var(--gold); color: var(--black);
+      padding: 14px 28px; border-radius: 100px;
+      font-size: 0.8rem; font-weight: 600; opacity: 0; pointer-events: none;
+      transition: all 0.4s ease; z-index: 5000;
+    }
+    #adminToast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
+  </style>
+</head>
+<body>
+
+  <header class="admin-header">
+    <div class="logo-lvs" style="font-size: 2.5rem;">LVS <span style="font-family:var(--font-sans); font-size:0.8rem; letter-spacing:0.2em; color:var(--text-muted); font-weight:400; text-transform:uppercase;">Admin</span></div>
+    <p style="margin-top:8px; color:var(--text-light);">Manage Featured Products</p>
+    <a href="index.html" class="btn btn-ghost" style="margin-top: 20px; font-size: 0.6rem; padding: 10px 20px;">Return to Website</a>
+  </header>
+
+  <div class="admin-container">
+    
+    <div class="admin-card">
+      <h2>Add New Product</h2>
+      <form id="addProductForm">
+        <div class="form-row" style="display:grid; grid-template-columns:1fr 1fr; gap:20px;">
+          <div class="admin-form-group">
+            <label class="admin-label">Product Name</label>
+            <input type="text" id="prodName" class="admin-input" placeholder="e.g. Royal Gold Necklace" required />
+          </div>
+          <div class="admin-form-group">
+            <label class="admin-label">Category</label>
+            <select id="prodCategory" class="admin-input" required>
+              <option value="necklaces">Necklaces</option>
+              <option value="rings">Rings</option>
+              <option value="earrings">Earrings</option>
+              <option value="bracelets">Bracelets</option>
+            </select>
+          </div>
+        </div>
+        
+        <div class="form-row" style="display:grid; grid-template-columns:1fr 1fr; gap:20px;">
+          <div class="admin-form-group">
+            <label class="admin-label">Price (₹)</label>
+            <input type="text" id="prodPrice" class="admin-input" placeholder="e.g. 1,50,000" required />
+          </div>
+          <div class="admin-form-group">
+            <label class="admin-label">Product Image</label>
+            <input type="file" id="prodImage" class="admin-input" accept="image/png, image/jpeg, image/webp" required style="padding: 9px;" />
+          </div>
+        </div>
+
+        <button type="submit" class="btn btn-primary" style="margin-top: 10px; width: 100%;">Add Product to Website</button>
+      </form>
+    </div>
+
+    <div class="admin-card">
+      <h2>Manage Current Products</h2>
+      <div class="admin-grid" id="adminProductsGrid">
+        <!-- Products will be injected here via JS -->
+      </div>
+    </div>
+
+  </div>
+
+  <div id="adminToast"></div>
+
+  <script type="module" src="admin.js"></script>
+</body>
+</html>
