@@ -200,6 +200,26 @@
       </form>
     </div>
 
+    <!-- NEW CARD: Manage Gold & Silver Rates -->
+    <div class="admin-card">
+      <h2>Update Live Rates</h2>
+      <form id="ratesForm">
+        <div class="admin-form-group">
+          <label class="admin-label" for="gold22Input">Gold (22K) Rate (₹/g)</label>
+          <input type="number" id="gold22Input" class="admin-input" placeholder="e.g., 13950" required />
+        </div>
+        <div class="admin-form-group">
+          <label class="admin-label" for="gold24Input">Gold (24K) Rate (₹/g)</label>
+          <input type="number" id="gold24Input" class="admin-input" placeholder="e.g., 14648" required />
+        </div>
+        <div class="admin-form-group">
+          <label class="admin-label" for="silverInput">Silver Rate (₹/g)</label>
+          <input type="number" id="silverInput" class="admin-input" placeholder="e.g., 260" required />
+        </div>
+        <button type="submit" class="btn btn-primary" style="margin-top:10px; width:100%;">Save Rates</button>
+      </form>
+    </div>
+
     <div class="admin-card">
       <h2>Manage Current Products</h2>
       <div class="admin-grid" id="adminProductsGrid">
@@ -212,5 +232,38 @@
   <div id="adminToast"></div>
 
   <script type="module" src="admin.js"></script>
+  <script>
+    // Load saved rates into the form fields
+    const ratesForm = document.getElementById('ratesForm');
+    const gold22Input = document.getElementById('gold22Input');
+    const gold24Input = document.getElementById('gold24Input');
+    const silverInput = document.getElementById('silverInput');
+
+    function loadRates() {
+      gold22Input.value = localStorage.getItem('gold22Rate') || '';
+      gold24Input.value = localStorage.getItem('gold24Rate') || '';
+      silverInput.value = localStorage.getItem('silverRate') || '';
+    }
+
+    loadRates();
+
+    ratesForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+      // Only persist non‑empty values to avoid overwriting existing rates with blanks
+      if (gold22Input.value) {
+        localStorage.setItem('gold22Rate', gold22Input.value);
+      }
+      if (gold24Input.value) {
+        localStorage.setItem('gold24Rate', gold24Input.value);
+      }
+      if (silverInput.value) {
+        localStorage.setItem('silverRate', silverInput.value);
+      }
+      // showToast is defined in admin.js
+      if (typeof showToast === 'function') {
+        showToast('✅ Rates saved');
+      }
+    });
+  </script>
 </body>
 </html>

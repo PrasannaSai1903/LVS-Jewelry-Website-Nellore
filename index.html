@@ -20,15 +20,15 @@
     <div class="rates-body">
       <div class="rate-item">
         <span class="rate-label">Gold (22K)</span>
-        <span class="rate-value">₹ 13,950 /g</span>
+        <span class="rate-value" id="gold22Rate">₹ -- /g</span>
       </div>
       <div class="rate-item">
         <span class="rate-label">Gold (24K)</span>
-        <span class="rate-value">₹ 14,648 /g</span>
+        <span class="rate-value" id="gold24Rate">₹ -- /g</span>
       </div>
       <div class="rate-item">
         <span class="rate-label">Silver</span>
-        <span class="rate-value">₹ 260 /g</span>
+        <span class="rate-value" id="silverRate">₹ -- /g</span>
       </div>
     </div>
   </div>
@@ -509,5 +509,30 @@
   <button id="backToTop" class="back-to-top" aria-label="Back to top">↑</button>
 
   <script type="module" src="main.js"></script>
+  <script>
+    // Initialize rates from localStorage or fallback to hardcoded defaults
+    function setRate(id, value, fallback) {
+      const el = document.getElementById(id);
+      if (!el) return;
+      const display = value || fallback;
+      el.textContent = `₹ ${display} /g`;
+    }
+
+    function loadRates() {
+      setRate('gold22Rate', localStorage.getItem('gold22Rate'), '13,950');
+      setRate('gold24Rate', localStorage.getItem('gold24Rate'), '14,648');
+      setRate('silverRate', localStorage.getItem('silverRate'), '260');
+    }
+
+    // Load on page load
+    loadRates();
+
+    // Listen for changes from other tabs/windows
+    window.addEventListener('storage', (e) => {
+      if (e.key === 'gold22Rate' || e.key === 'gold24Rate' || e.key === 'silverRate') {
+        loadRates();
+      }
+    });
+  </script>
 </body>
 </html>
