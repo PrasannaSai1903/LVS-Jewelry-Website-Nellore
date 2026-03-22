@@ -130,14 +130,22 @@
       <button id="adminSubmit">Enter</button>
     </div>
     <script>
-      // Simple client‑side password check (for demo only).
+      // Simple client‑side password check with persistence (demo only).
       const correctPwd = 'lvsnellore1990';
       const overlay = document.getElementById('adminOverlay');
       const pwdInput = document.getElementById('adminPwd');
       const submitBtn = document.getElementById('adminSubmit');
+
+      // If already authenticated in this browser, hide overlay immediately
+      if (localStorage.getItem('adminAuth') === 'true') {
+        overlay.style.display = 'none';
+      }
+
       submitBtn.addEventListener('click', () => {
         if (pwdInput.value === correctPwd) {
           overlay.style.display = 'none';
+          // Remember auth for this session (persist across reloads)
+          localStorage.setItem('adminAuth', 'true');
         } else {
           alert('Incorrect password');
           // Optionally redirect to home page
