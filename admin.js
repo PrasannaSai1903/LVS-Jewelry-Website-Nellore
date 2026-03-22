@@ -1,4 +1,4 @@
-import { db, collection, addDoc, getDocs, deleteDoc, doc } from './firebase-config.js';
+import { db, collection, addDoc, getDocs, deleteDoc, doc, storage, ref, uploadBytes, getDownloadURL } from './firebase-config.js';
 
 // ─── DEFAULT PRODUCTS FOR LVS JEWELLERY ───
 const defaultProducts = [
@@ -87,35 +87,42 @@ document.getElementById('addProductForm').addEventListener('submit', async funct
 
   if (fileInput.files && fileInput.files[0]) {
     const file = fileInput.files[0];
-    const reader = new FileReader();
-
-    reader.onload = async function(e) {
-      const base64Image = e.target.result;
+    
+    try {
+      // 1. Upload to Firebase Storage
+      const storageRef = ref(storage, `products/${Date.now()}_${file.name}`);
+      const snapshot = await uploadBytes(storageRef, file);
       
+      // 2. Get Download URL
+      const downloadURL = await getDownloadURL(snapshot.ref);
+      
+      // 3. Save to Firestore
       const newProduct = {
         name: name,
         category: category,
         price: price,
-        image: base64Image,
+        image: downloadURL,
         badge: 'New',
         createdAt: Date.now()
       };
 
-      try {
-        await addDoc(collection(db, "products"), newProduct);
-        showToast('✨ Product added to Firebase!');
-        document.getElementById('addProductForm').reset();
-        renderAdminProducts();
-      } catch (err) {
-        console.error("Firebase add error", err);
-        showToast('Error adding to database!');
-      }
-      
+      await addDoc(collection(db, "products"), newProduct);
+      showToast('✨ Product added to Firebase!');
+      document.getElementById('addProductForm').reset();
+      renderAdminProducts();
+    } catch (err) {
+      console.error("Upload/Firebase error", err);
+      showToast('Error adding product! Check console.');
+    } finally {
       nameBtn.textContent = originalText;
       nameBtn.style.opacity = '1';
       nameBtn.style.pointerEvents = 'auto';
-    };
-    reader.readAsDataURL(file);
+    }
+  } else {
+    showToast('Please select an image!');
+    nameBtn.textContent = originalText;
+    nameBtn.style.opacity = '1';
+    nameBtn.style.pointerEvents = 'auto';
   }
 });
 
