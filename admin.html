@@ -90,7 +90,65 @@
     #adminToast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
   </style>
 </head>
-<body>
+  <body>
+    <!-- Password overlay – simple client‑side protection -->
+    <style>
+      .admin-protect-overlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(0,0,0,0.85);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-direction: column;
+        color: var(--white);
+        z-index: 10000;
+      }
+      .admin-protect-overlay input {
+        padding: 8px 12px;
+        margin-top: 12px;
+        border: 1px solid var(--gold);
+        background: var(--dark-2);
+        color: var(--white);
+        border-radius: 4px;
+        width: 200px;
+        text-align: center;
+      }
+      .admin-protect-overlay button {
+        margin-top: 12px;
+        padding: 6px 16px;
+        background: var(--gold);
+        color: var(--black);
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+      }
+    </style>
+    <div class="admin-protect-overlay" id="adminOverlay">
+      <h2>Admin Access Required</h2>
+      <input type="password" id="adminPwd" placeholder="Enter password" />
+      <button id="adminSubmit">Enter</button>
+    </div>
+    <script>
+      // Simple client‑side password check (for demo only).
+      const correctPwd = 'lvsnellore1990';
+      const overlay = document.getElementById('adminOverlay');
+      const pwdInput = document.getElementById('adminPwd');
+      const submitBtn = document.getElementById('adminSubmit');
+      submitBtn.addEventListener('click', () => {
+        if (pwdInput.value === correctPwd) {
+          overlay.style.display = 'none';
+        } else {
+          alert('Incorrect password');
+          // Optionally redirect to home page
+          window.location.href = 'index.html';
+        }
+      });
+      // Allow Enter key to submit
+      pwdInput.addEventListener('keydown', e => {
+        if (e.key === 'Enter') submitBtn.click();
+      });
+    </script>
 
   <header class="admin-header">
     <div class="logo-lvs" style="font-size: 2.5rem;">LVS <span style="font-family:var(--font-sans); font-size:0.8rem; letter-spacing:0.2em; color:var(--text-muted); font-weight:400; text-transform:uppercase;">Admin</span></div>
