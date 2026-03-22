@@ -9,7 +9,7 @@ const firebaseConfig = {
   apiKey: "AIzaSyDRlFu4RxtRFTKw2DssRJHqHrnRw_jbbkQ",
   authDomain: "lvs-jewelry.firebaseapp.com",
   projectId: "lvs-jewelry",
-  storageBucket: "lvs-jewelry.firebasestorage.app",
+  storageBucket: "lvs-jewelry.appspot.com", // Tried legacy appspot for better compatibility
   messagingSenderId: "294866494671",
   appId: "1:294866494671:web:a3afd5828888c254aec3ba",
   measurementId: "G-XW6ZT5XQMP"

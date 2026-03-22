@@ -12,18 +12,25 @@ const defaultProducts = [
 
 // ─── FETCH DATABASE ───
 async function getProducts() {
+  console.log("Fetching products from Firestore...");
   try {
     const querySnapshot = await getDocs(collection(db, "products"));
+    console.log("Firestore fetch successful, docs count:", querySnapshot.size);
     const products = [];
     querySnapshot.forEach((doc) => {
       products.push({ dbId: doc.id, ...doc.data() });
     });
     return products.sort((a, b) => b.createdAt - a.createdAt);
   } catch (err) {
-    console.error("Firebase fetch error", err);
+    console.error("Firebase fetch error:", err);
     return [];
   }
 }
+
+// Expose services for console debugging
+window.db = db;
+window.storage = storage;
+console.log("Firebase services exposed to window.db and window.storage");
 
 // ─── RENDER ADMIN GRID ───
 async function renderAdminProducts() {
@@ -73,6 +80,7 @@ document.getElementById('adminProductsGrid').addEventListener('click', async fun
 // ─── HANDLE FORM SUBMIT (ADD PRODUCT) ───
 document.getElementById('addProductForm').addEventListener('submit', async function(e) {
   e.preventDefault();
+  console.log("Form submit started...");
   
   const nameBtn = document.querySelector('button[type="submit"]');
   const originalText = nameBtn.textContent;
@@ -87,33 +95,63 @@ document.getElementById('addProductForm').addEventListener('submit', async funct
 
   if (fileInput.files && fileInput.files[0]) {
     const file = fileInput.files[0];
+    console.log("File selected:", file.name, file.size, file.type);
     
     try {
+      if (!storage) {
+        console.error("Storage object is missing!");
+        throw new Error("Firebase Storage service is not initialized. Check your firebase-config.js exports.");
+      }
+
       // 1. Upload to Firebase Storage
-      const storageRef = ref(storage, `products/${Date.now()}_${file.name}`);
+      // Use simple filename to avoid encoding issues
+      const cleanFileName = file.name.replace(/[^a-z0-9.]/gi, '_').toLowerCase();
+      const storagePath = `products/${Date.now()}_${cleanFileName}`;
+      console.log("Starting upload to storage... Bucket:", storage.app.options.storageBucket);
+      console.log("Path:", storagePath);
+      
+      const storageRef = ref(storage, storagePath);
+      
       const snapshot = await uploadBytes(storageRef, file);
+      console.log("Upload SUCCESS! Snapshot:", snapshot);
       
       // 2. Get Download URL
       const downloadURL = await getDownloadURL(snapshot.ref);
+      console.log("Public URL:", downloadURL);
       
       // 3. Save to Firestore
       const newProduct = {
-        name: name,
-        category: category,
-        price: price,
+        name, category, price,
         image: downloadURL,
         badge: 'New',
         createdAt: Date.now()
       };
 
+      console.log("Adding to Firestore...");
       await addDoc(collection(db, "products"), newProduct);
+      console.log("Firestore SUCCESS!");
+      
       showToast('✨ Product added to Firebase!');
       document.getElementById('addProductForm').reset();
       renderAdminProducts();
     } catch (err) {
-      console.error("Upload/Firebase error", err);
-      showToast('Error adding product! Check console.');
+      console.error("EXPERT DIAGNOSTIC - Firebase Failure:", err);
+      let errorMsg = "Error adding product!";
+      
+      if (err.code === 'storage/unauthorized') {
+        errorMsg = "Storage Error: Access Denied. Check your Firebase Storage Rules!";
+      } else if (err.code === 'storage/retry-limit-exceeded') {
+        errorMsg = "Storage Error: Timeout. Check your internet connection or bucket settings.";
+      } else if (err.code === 'storage/unknown') {
+        errorMsg = "Storage Error: Unknown error. Check if Firebase Storage is enabled in the console.";
+      } else if (err.message) {
+        errorMsg = `Error: ${err.message}`;
+      }
+      
+      showToast(errorMsg);
+      alert(errorMsg + "\nCheck the browser console (F12) for the full technical log.");
     } finally {
+      console.log("Resetting button state.");
       nameBtn.textContent = originalText;
       nameBtn.style.opacity = '1';
       nameBtn.style.pointerEvents = 'auto';
