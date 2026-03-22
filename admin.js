@@ -48,14 +48,38 @@ async function renderAdminProducts() {
   products.forEach(p => {
     const item = document.createElement('div');
     item.className = 'admin-product-item';
-    item.innerHTML = `
-      <img src="${p.image}" alt="${p.name}" />
-      <div class="admin-product-info">
-        <h4>${p.name}</h4>
-        <p>₹ ${p.price}</p>
-        <button class="btn-delete" data-id="${p.dbId}">Delete Product</button>
-      </div>
+    
+    // Create image element separately to handle Base64
+    const imageDiv = document.createElement('div');
+    imageDiv.className = 'admin-image-container';
+    
+    const img = document.createElement('img');
+    img.className = 'admin-product-img';
+    img.loading = 'lazy';
+    img.src = p.image;  // This can be Base64 data URL or regular URL
+    img.alt = p.name;
+    img.onload = function() {
+      console.log(`✓ Image loaded: ${p.name}`);
+      this.classList.add('loaded');
+    };
+    img.onerror = function() {
+      console.error(`✗ Image failed: ${p.name}`);
+      handleAdminImageError(this, p.name);
+    };
+    
+    imageDiv.appendChild(img);
+    
+    // Create info section
+    const infoDiv = document.createElement('div');
+    infoDiv.className = 'admin-product-info';
+    infoDiv.innerHTML = `
+      <h4>${p.name}</h4>
+      <p>₹ ${p.price}</p>
+      <button class="btn-delete" data-id="${p.dbId}">Delete Product</button>
     `;
+    
+    item.appendChild(imageDiv);
+    item.appendChild(infoDiv);
     grid.appendChild(item);
   });
 }
@@ -98,60 +122,73 @@ document.getElementById('addProductForm').addEventListener('submit', async funct
     console.log("File selected:", file.name, file.size, file.type);
     
     try {
-      if (!storage) {
-        console.error("Storage object is missing!");
-        throw new Error("Firebase Storage service is not initialized. Check your firebase-config.js exports.");
-      }
+      // Compress image client-side to reduce upload/display time
+      const imgEl = new Image();
+      const objectURL = URL.createObjectURL(file);
+      imgEl.src = objectURL;
+      imgEl.onload = async function() {
+        try {
+          const MAX_WIDTH = 1200; // downscale large images
+          const MAX_HEIGHT = 1200;
+          let { width, height } = imgEl;
+          let targetWidth = width;
+          let targetHeight = height;
+          if (width > MAX_WIDTH || height > MAX_HEIGHT) {
+            const ratio = Math.min(MAX_WIDTH / width, MAX_HEIGHT / height);
+            targetWidth = Math.round(width * ratio);
+            targetHeight = Math.round(height * ratio);
+          }
 
-      // 1. Upload to Firebase Storage
-      // Use simple filename to avoid encoding issues
-      const cleanFileName = file.name.replace(/[^a-z0-9.]/gi, '_').toLowerCase();
-      const storagePath = `products/${Date.now()}_${cleanFileName}`;
-      console.log("Starting upload to storage... Bucket:", storage.app.options.storageBucket);
-      console.log("Path:", storagePath);
-      
-      const storageRef = ref(storage, storagePath);
-      
-      const snapshot = await uploadBytes(storageRef, file);
-      console.log("Upload SUCCESS! Snapshot:", snapshot);
-      
-      // 2. Get Download URL
-      const downloadURL = await getDownloadURL(snapshot.ref);
-      console.log("Public URL:", downloadURL);
-      
-      // 3. Save to Firestore
-      const newProduct = {
-        name, category, price,
-        image: downloadURL,
-        badge: 'New',
-        createdAt: Date.now()
+          const canvas = document.createElement('canvas');
+          canvas.width = targetWidth;
+          canvas.height = targetHeight;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(imgEl, 0, 0, targetWidth, targetHeight);
+
+          // Convert to JPEG to reduce size if original is PNG, quality 0.8
+          const compressedDataUrl = canvas.toDataURL('image/jpeg', 0.8);
+          URL.revokeObjectURL(objectURL);
+
+          console.log('Original size (bytes):', file.size);
+          console.log('Compressed length (chars):', compressedDataUrl.length);
+
+          const newProduct = {
+            name,
+            category,
+            price,
+            image: compressedDataUrl,
+            badge: 'New',
+            createdAt: Date.now()
+          };
+
+          console.log('Adding compressed image product to Firestore...');
+          await addDoc(collection(db, 'products'), newProduct);
+          console.log('Firestore SUCCESS!');
+
+          showToast('✨ Product added to Firebase (compressed image)!');
+          document.getElementById('addProductForm').reset();
+          renderAdminProducts();
+        } catch (err) {
+          console.error('Firestore/compress error:', err);
+          showToast('Error adding product!');
+          alert('Error adding product. See console for details.');
+        } finally {
+          nameBtn.textContent = originalText;
+          nameBtn.style.opacity = '1';
+          nameBtn.style.pointerEvents = 'auto';
+        }
       };
-
-      console.log("Adding to Firestore...");
-      await addDoc(collection(db, "products"), newProduct);
-      console.log("Firestore SUCCESS!");
-      
-      showToast('✨ Product added to Firebase!');
-      document.getElementById('addProductForm').reset();
-      renderAdminProducts();
+      imgEl.onerror = function(e) {
+        URL.revokeObjectURL(objectURL);
+        console.error('Image load error', e);
+        showToast('Error processing image file');
+        nameBtn.textContent = originalText;
+        nameBtn.style.opacity = '1';
+        nameBtn.style.pointerEvents = 'auto';
+      };
     } catch (err) {
-      console.error("EXPERT DIAGNOSTIC - Firebase Failure:", err);
-      let errorMsg = "Error adding product!";
-      
-      if (err.code === 'storage/unauthorized') {
-        errorMsg = "Storage Error: Access Denied. Check your Firebase Storage Rules!";
-      } else if (err.code === 'storage/retry-limit-exceeded') {
-        errorMsg = "Storage Error: Timeout. Check your internet connection or bucket settings.";
-      } else if (err.code === 'storage/unknown') {
-        errorMsg = "Storage Error: Unknown error. Check if Firebase Storage is enabled in the console.";
-      } else if (err.message) {
-        errorMsg = `Error: ${err.message}`;
-      }
-      
-      showToast(errorMsg);
-      alert(errorMsg + "\nCheck the browser console (F12) for the full technical log.");
-    } finally {
-      console.log("Resetting button state.");
+      console.error('Error:', err);
+      showToast('Error processing image!');
       nameBtn.textContent = originalText;
       nameBtn.style.opacity = '1';
       nameBtn.style.pointerEvents = 'auto';
@@ -178,6 +215,32 @@ function showToast(msg) {
   adminToastTimer = setTimeout(() => {
     toast.className = toast.className.replace('show', '');
   }, 3000);
+}
+
+// ─── ADMIN IMAGE ERROR HANDLER ───
+function handleAdminImageError(img, productName) {
+  console.error(`✗ Failed to load admin image for: ${productName}`);
+  console.error(`  URL: ${img.src}`);
+  
+  const container = img.parentElement;
+  if (container) {
+    const placeholder = document.createElement('div');
+    placeholder.className = 'admin-image-placeholder';
+    placeholder.style.cssText = `
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(135deg, #f5f0e8 0%, #e8dcc8 100%);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      font-size: 2rem;
+      color: #888;
+      border-radius: 4px;
+    `;
+    placeholder.innerHTML = '<div style="font-size:2.5rem;margin-bottom:8px;">📷</div><div style="font-size:0.8rem;text-align:center;width:100%;">Image<br>Failed</div>';
+    img.replaceWith(placeholder);
+  }
 }
 
 // Initialize on load

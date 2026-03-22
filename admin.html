@@ -48,9 +48,26 @@
       border-radius: 8px; overflow: hidden;
       padding-bottom: 16px; text-align: center;
     }
-    .admin-product-item img {
-      width: 100%; height: 200px; object-fit: cover;
-      margin-bottom: 16px;
+    .admin-image-container {
+      width: 100%;
+      height: 200px;
+      position: relative;
+      overflow: hidden;
+      background: linear-gradient(135deg, var(--dark-2) 0%, var(--dark-3) 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .admin-product-img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      object-position: center;
+      transition: opacity 0.6s ease;
+      display: block;
+    }
+    .admin-product-img.loaded {
+      opacity: 1;
     }
     .admin-product-info h4 { font-family: var(--font-serif); font-size: 1.2rem; margin-bottom: 4px; }
     .admin-product-info p { color: var(--gold); font-size: 0.9rem; margin-bottom: 16px; }

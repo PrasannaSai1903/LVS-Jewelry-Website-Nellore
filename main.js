@@ -138,6 +138,33 @@ const revealObserver = new IntersectionObserver((entries) => {
 
 document.querySelectorAll('.reveal').forEach(el => revealObserver.observe(el));
 
+// ─── IMAGE LOADING HANDLERS ──────────────────────────────────────────────────
+function handleImageLoad(img) {
+  const loader = img.parentElement?.querySelector('.image-loader');
+  if (loader) loader.style.display = 'none';
+  img.style.opacity = '1';
+  console.log(`✓ Image loaded: ${img.alt}`);
+}
+
+function handleImageError(img, productName) {
+  const loader = img.parentElement?.querySelector('.image-loader');
+  if (loader) loader.style.display = 'none';
+  
+  console.error(`✗ Failed to load image for: ${productName}`);
+  console.error(`  Image URL: ${img.src}`);
+  
+  // Create fallback placeholder
+  const placeholder = document.createElement('div');
+  placeholder.className = 'image-placeholder';
+  placeholder.innerHTML = `
+    <div style="font-size:3rem; margin-bottom:8px;">📷</div>
+    <div style="font-size:0.85rem; font-weight:500;">Image not available</div>
+  `;
+  placeholder.style.cssText = 'width:100%; height:100%; display:flex; flex-direction:column; align-items:center; justify-content:center; background:var(--bg-light); color:var(--text-light);';
+  
+  img.replaceWith(placeholder);
+}
+
 // ─── STAT COUNTER ────────────────────────────────────────────────────────────
 function animateCounter(el) {
   const target = parseInt(el.dataset.count, 10);
@@ -182,23 +209,32 @@ async function renderHomepageProducts() {
   try {
     const querySnapshot = await getDocs(collection(db, "products"));
     querySnapshot.forEach((doc) => {
-      products.push({ id: doc.id, ...doc.data() });
+      const data = doc.data();
+      // Validate image field exists
+      if (!data.image) {
+        console.warn(`Product "${data.name}" missing image URL`);
+      }
+      products.push({ id: doc.id, ...data });
     });
     // Sort by newest first
-    products.sort((a, b) => b.createdAt - a.createdAt);
+    products.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+    console.log(`✓ Loaded ${products.length} products from Firebase`);
   } catch (err) {
     console.error("Firebase fetch error", err);
+    showToast('⚠️ Failed to load from database. Using default products.');
   }
 
   // Fallback to default dummy data if database is empty or fails
   if (products.length === 0) {
+    console.log('⚠️ No products in Firebase. Using default fallback products.');
     products = defaultProducts;
   }
 
   grid.innerHTML = products.map(p => `
-    <div class="product-card reveal visible" data-category="${p.category}">
+    <div class="product-card reveal visible" data-category="${p.category}" data-product-id="${p.id || p.dbId}">
       <div class="product-image-wrap">
-        <img src="${p.image}" alt="${p.name}" />
+        <div class="image-loader"><span class="spinner"></span></div>
+        <img loading="lazy" src="${p.image}" alt="${p.name}" class="product-img" onerror="handleImageError(this, '${p.name}')" onload="handleImageLoad(this)" />
         ${p.badge ? `<div class="product-badge ${p.badge.toLowerCase() === 'new' ? 'new' : ''}">${p.badge}</div>` : ''}
         <button class="product-wish" aria-label="Wishlist">♡</button>
         <div class="product-actions">
@@ -216,7 +252,8 @@ async function renderHomepageProducts() {
       </div>
     </div>
   `).join('');
-
+  // Ensure image load/error handlers are attached for newly injected images
+  attachGlobalImageHandlers();
   attachProductListeners();
 }
 
@@ -292,6 +329,27 @@ function attachProductListeners() {
 
 // Call on load
 renderHomepageProducts();
+
+// Ensure image loaders are hidden when images load or error out, even if inline handlers are missing.
+function attachGlobalImageHandlers() {
+  // Select all product images that may be added dynamically.
+  const imgs = document.querySelectorAll('img.product-img');
+  imgs.forEach(img => {
+    // Remove any existing listeners to avoid duplicates.
+    img.removeEventListener('load', img._loadHandler);
+    img.removeEventListener('error', img._errorHandler);
+
+    const loadHandler = () => handleImageLoad(img);
+    const errorHandler = () => handleImageError(img, img.alt);
+    img._loadHandler = loadHandler;
+    img._errorHandler = errorHandler;
+    img.addEventListener('load', loadHandler);
+    img.addEventListener('error', errorHandler);
+  });
+}
+
+// Run after initial render and also after any future dynamic renders.
+attachGlobalImageHandlers();
 
 // ─── TESTIMONIAL SLIDER ──────────────────────────────────────────────────────
 const testimonialCards = document.querySelectorAll('.testimonial-card');

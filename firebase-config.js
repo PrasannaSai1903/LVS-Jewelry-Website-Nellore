@@ -18,8 +18,8 @@ const firebaseConfig = {
 // Initialize Firebase App
 const app = initializeApp(firebaseConfig);
 
-// Initialize Firestore Database
-const db = getFirestore(app);
+// Initialize Firestore Database (connect to named database "lvsjewelrydb")
+const db = getFirestore(app, "lvsjewelrydb");
 
 // Initialize Firebase Storage
 const storage = getStorage(app);
